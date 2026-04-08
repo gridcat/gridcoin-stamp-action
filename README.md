@@ -1,0 +1,190 @@
+# Gridcoin Blockchain Timestamp Action
+
+A GitHub Action that timestamps your release assets on the [Gridcoin](https://gridcoin.us/) blockchain via [stamp.gridcoin.club](https://stamp.gridcoin.club). When a release is published, this action downloads the assets, computes their SHA-256 hashes, submits them for blockchain timestamping, and appends verification links to the release notes.
+
+## How it works
+
+1. A new release is published on your repository
+2. The action downloads release assets (source archives and/or uploaded files)
+3. SHA-256 hashes are computed locally for each file
+4. Each hash is submitted to the [stamp.gridcoin.club](https://stamp.gridcoin.club) API
+5. The hash is permanently recorded on the Gridcoin blockchain
+6. Verification links are appended to the release body
+
+The proof page at `stamp.gridcoin.club/proof/<hash>` will show "pending" until the blockchain confirms the transaction (typically 2–5 minutes), then displays the full cryptographic proof.
+
+## Usage
+
+```yaml
+name: Stamp Release
+on:
+  release:
+    types: [published]
+
+jobs:
+  stamp:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: gridcat/gridcoin-stamp-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## Inputs
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `github-token` | GitHub token for downloading assets and updating the release body | `${{ github.token }}` |
+| `api-url` | Stamp API base URL | `https://stamp.gridcoin.club/api` |
+| `include-source-archives` | Stamp the auto-generated source code archives (.zip and .tar.gz) | `true` |
+| `wait-for-confirmation` | Poll until the blockchain confirms the stamps before finishing | `false` |
+| `poll-timeout` | Max seconds to wait for blockchain confirmation | `300` |
+| `poll-interval` | Seconds between confirmation polls | `30` |
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `stamps` | JSON array of stamp results |
+
+Each entry in the `stamps` array has the following shape:
+
+```json
+{
+  "filename": "v1.0.0-source.zip",
+  "hash": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+  "proofUrl": "https://stamp.gridcoin.club/proof/b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+  "status": "submitted"
+}
+```
+
+Status is one of: `submitted` (hash sent to API), `pending` (polling timed out), or `confirmed` (blockchain confirmed).
+
+## Examples
+
+### Basic — stamp source archives only
+
+```yaml
+- uses: gridcat/gridcoin-stamp-action@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Wait for blockchain confirmation
+
+```yaml
+- uses: gridcat/gridcoin-stamp-action@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    wait-for-confirmation: true
+    poll-timeout: 600
+```
+
+### Stamp only uploaded assets (skip source archives)
+
+```yaml
+- uses: gridcat/gridcoin-stamp-action@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    include-source-archives: false
+```
+
+### Use stamp output in subsequent steps
+
+```yaml
+- uses: gridcat/gridcoin-stamp-action@v1
+  id: stamp
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+
+- run: echo '${{ steps.stamp.outputs.stamps }}' | jq .
+```
+
+### Using with CircleCI and semantic-release
+
+If you use [CircleCI](https://circleci.com/) with [semantic-release](https://github.com/semantic-release/semantic-release) to publish releases, you can still use this action. semantic-release creates a GitHub Release via the `@semantic-release/github` plugin, which triggers the `release: published` event. A separate GitHub Actions workflow then picks up that event and stamps the assets.
+
+**CircleCI** handles your build, test, and release pipeline as usual:
+
+```yaml
+# .circleci/config.yml (simplified)
+jobs:
+  release:
+    docker:
+      - image: cimg/node:22.0
+    steps:
+      - checkout
+      - run: npm ci
+      - run: npx semantic-release
+```
+
+Make sure your semantic-release config includes the `@semantic-release/github` plugin (it's included by default) so that a GitHub Release is created with assets.
+
+**GitHub Actions** runs the stamping workflow, triggered automatically when the release appears:
+
+```yaml
+# .github/workflows/stamp.yml
+name: Stamp Release
+on:
+  release:
+    types: [published]
+
+jobs:
+  stamp:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: gridcat/gridcoin-stamp-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+This works because the action only reacts to the GitHub Release event — it doesn't matter whether the release was created by semantic-release on CircleCI, manually, or by any other tool.
+
+## Release body output
+
+The action appends a section like this to your release notes:
+
+---
+
+### Blockchain Timestamps (Gridcoin)
+| File | SHA-256 | Proof | Status |
+|------|---------|-------|--------|
+| v1.0.0-source.zip | `b94d27b9...ace2efcde9` | [Verify](https://stamp.gridcoin.club/proof/b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9) | submitted |
+| v1.0.0-source.tar.gz | `e3b0c442...7852b855` | [Verify](https://stamp.gridcoin.club/proof/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855) | submitted |
+
+---
+
+Re-running the action on the same release replaces the section rather than duplicating it.
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Type check
+npm run typecheck
+
+# Run tests
+npm test
+
+# Build the dist bundle
+npm run build
+
+# All of the above
+npm run all
+```
+
+The `dist/` directory must be committed — GitHub Actions runs the compiled bundle directly.
+
+## License
+
+MIT
+
+---
+
+<p align="center">Made with ❤️ by @gridcat</p>

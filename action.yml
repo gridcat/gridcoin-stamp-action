@@ -1,0 +1,41 @@
+name: 'Gridcoin Blockchain Timestamp'
+description: 'Timestamp GitHub release assets on the Gridcoin blockchain via stamp.gridcoin.club'
+author: 'gridcat'
+
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+inputs:
+  api-url:
+    description: 'Stamp API base URL'
+    required: false
+    default: 'https://stamp.gridcoin.club/api'
+  wait-for-confirmation:
+    description: 'Poll until blockchain confirms the stamps'
+    required: false
+    default: 'false'
+  poll-timeout:
+    description: 'Max seconds to wait for blockchain confirmation'
+    required: false
+    default: '300'
+  poll-interval:
+    description: 'Seconds between confirmation polls'
+    required: false
+    default: '30'
+  include-source-archives:
+    description: 'Stamp the auto-generated source code archives (.zip and .tar.gz)'
+    required: false
+    default: 'true'
+  github-token:
+    description: 'GitHub token for downloading assets and updating release body'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  stamps:
+    description: 'JSON array of stamp results: [{filename, hash, stampId, proofUrl, status}]'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

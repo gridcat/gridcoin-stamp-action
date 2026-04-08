@@ -1,0 +1,20 @@
+name: Update Major Tag
+on:
+  release:
+    types: [published]
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update major version tag
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          MAJOR="${TAG_NAME%%.*}"
+          git tag -f "$MAJOR" "$TAG_NAME"
+          git push -f origin "$MAJOR"
