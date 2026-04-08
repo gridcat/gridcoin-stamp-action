@@ -11,7 +11,7 @@ A GitHub Action that timestamps your release assets on the [Gridcoin](https://gr
 5. The hash is permanently recorded on the Gridcoin blockchain
 6. Verification links are appended to the release body
 
-The proof page at `stamp.gridcoin.club/proof/<hash>` will show "pending" until the blockchain confirms the transaction (typically 2–5 minutes), then displays the full cryptographic proof.
+Note that proof links in the release body will **not resolve immediately** — `stamp.gridcoin.club/proof/<hash>` returns a 404 until the blockchain confirms the transaction (typically 2–5 minutes). Once confirmed, the page displays the full cryptographic proof. If you need the links to be valid by the time the action finishes, set `wait-for-confirmation: true`.
 
 ## Usage
 
