@@ -260,9 +260,9 @@ The action appends a section like this to your release notes:
 ### Blockchain Timestamps (Gridcoin)
 | File | SHA-256 | Proof | Status |
 |------|---------|-------|--------|
-| gridcoin-stamp-action-1.0.0-stamped.zip | `b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9` | [Verify](https://stamp.gridcoin.club/proof/b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9) | submitted |
-| gridcoin-stamp-action-1.0.0-stamped.tar.gz | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | [Verify](https://stamp.gridcoin.club/proof/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855) | submitted |
-| v1.0.0.stamp.txt | `a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90` | [Verify](https://stamp.gridcoin.club/proof/a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90) | submitted |
+| gridcoin-stamp-action-1.1.0-stamped.zip | `d1f18678e819a8cadafef2301d7711e39569c0c1d10c0fca1e0c4d62c410b6d6` | [Verify](https://stamp.gridcoin.club/proof/d1f18678e819a8cadafef2301d7711e39569c0c1d10c0fca1e0c4d62c410b6d6) | submitted |
+| gridcoin-stamp-action-1.1.0-stamped.tar.gz | `00fd6ca8f2d279972205571ce66f92c500bf2bcf4bbbeb1dcb35c3b5b324a851` | [Verify](https://stamp.gridcoin.club/proof/00fd6ca8f2d279972205571ce66f92c500bf2bcf4bbbeb1dcb35c3b5b324a851) | submitted |
+| v1.1.0.stamp.txt | `fb55c015ee5efa8073dfa7cb1ec5ad71d7507c6b73265c9f35d39e1cb17db502` | [Verify](https://stamp.gridcoin.club/proof/fb55c015ee5efa8073dfa7cb1ec5ad71d7507c6b73265c9f35d39e1cb17db502) | submitted |
 
 ---
 
