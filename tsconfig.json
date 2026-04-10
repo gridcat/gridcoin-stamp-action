@@ -8,12 +8,10 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "outDir": "./dist",
-    "rootDir": "./src",
-    "sourceMap": true,
-    "declaration": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["vitest/globals", "node"]
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "__tests__"]
+  "include": ["src/**/*.ts", "__tests__/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

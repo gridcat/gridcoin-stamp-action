@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { StampApiClient } from '../src/stamp-api';
 
 const mockStampResponse = {
@@ -33,7 +34,7 @@ describe('StampApiClient', () => {
 
   describe('submitHash', () => {
     it('sends correct JSON:API request and returns response', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 201,
         json: () => Promise.resolve(mockStampResponse),
@@ -62,7 +63,7 @@ describe('StampApiClient', () => {
     });
 
     it('handles 200 for already-existing stamp', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
         json: () => Promise.resolve(mockStampResponse),
@@ -73,7 +74,7 @@ describe('StampApiClient', () => {
     });
 
     it('throws on 406 (insufficient funds)', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 406,
         text: () => Promise.resolve('Insufficient funds'),
@@ -85,7 +86,7 @@ describe('StampApiClient', () => {
     });
 
     it('throws on other errors', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 500,
         text: () => Promise.resolve('Internal Server Error'),
@@ -97,7 +98,7 @@ describe('StampApiClient', () => {
 
   describe('getByHash', () => {
     it('returns stamp data when hash exists', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
         json: () => Promise.resolve(mockStampResponse),
@@ -115,7 +116,7 @@ describe('StampApiClient', () => {
     });
 
     it('returns null when hash not found', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 404,
       });
@@ -125,7 +126,7 @@ describe('StampApiClient', () => {
     });
 
     it('throws on non-404 errors', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 500,
       });
@@ -136,7 +137,7 @@ describe('StampApiClient', () => {
 
   describe('getStamp', () => {
     it('fetches stamp by id', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockStampResponse),
       });
@@ -152,7 +153,7 @@ describe('StampApiClient', () => {
     });
 
     it('throws on error response', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 404,
       });

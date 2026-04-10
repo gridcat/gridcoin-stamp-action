@@ -1,0 +1,18 @@
+# Rebuild dist/ when a staged change could affect the bundled output, then
+# re-stage dist/ so source and bundle land in the same commit.
+#
+# GitHub Actions runs dist/index.js directly from whatever ref the caller
+# pins, so a commit that updates src/ without also updating dist/ silently
+# ships stale code to downstream workflows. This hook makes that failure
+# mode impossible.
+if ! git diff --cached --name-only | grep -qE '^(src/|package(-lock)?\.json$|tsconfig\.json$)'; then
+  exit 0
+fi
+
+echo "pre-commit: source change detected — rebuilding dist/..."
+if ! npm run build; then
+  echo "pre-commit: build failed; aborting commit." >&2
+  exit 1
+fi
+
+git add dist/

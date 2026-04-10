@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { pollForConfirmation } from '../src/poller';
 import { StampApiClient } from '../src/stamp-api';
 import { StampApiResponse } from '../src/types';
 
-// Mock @actions/core
-jest.mock('@actions/core', () => ({
-  info: jest.fn(),
+// Silence @actions/core's stdout chatter so test output stays readable.
+vi.mock('@actions/core', () => ({
+  info: vi.fn(),
 }));
 
 function makeResponse(block: number | null, time: number | null): StampApiResponse {
@@ -29,7 +30,7 @@ function makeResponse(block: number | null, time: number | null): StampApiRespon
 
 describe('pollForConfirmation', () => {
   it('returns immediately if already confirmed', async () => {
-    const client = { getStamp: jest.fn().mockResolvedValue(makeResponse(100, 1704067200)) };
+    const client = { getStamp: vi.fn().mockResolvedValue(makeResponse(100, 1704067200)) };
 
     const result = await pollForConfirmation(
       client as unknown as StampApiClient,
@@ -44,7 +45,7 @@ describe('pollForConfirmation', () => {
 
   it('polls until confirmed', async () => {
     const client = {
-      getStamp: jest
+      getStamp: vi
         .fn()
         .mockResolvedValueOnce(makeResponse(null, null))
         .mockResolvedValueOnce(makeResponse(null, null))
@@ -64,7 +65,7 @@ describe('pollForConfirmation', () => {
 
   it('throws on timeout', async () => {
     const client = {
-      getStamp: jest.fn().mockResolvedValue(makeResponse(null, null)),
+      getStamp: vi.fn().mockResolvedValue(makeResponse(null, null)),
     };
 
     await expect(
