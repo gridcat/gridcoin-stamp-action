@@ -4,12 +4,8 @@ export interface ActionInputs {
   pollTimeout: number;
   pollInterval: number;
   includeSourceArchives: boolean;
+  includeReleaseAssets: boolean;
   githubToken: string;
-}
-
-export interface AssetInfo {
-  name: string;
-  localPath: string;
 }
 
 export interface StampApiResponse {

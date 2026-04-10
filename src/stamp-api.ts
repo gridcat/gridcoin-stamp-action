@@ -1,5 +1,13 @@
 import { StampApiResponse } from './types';
 
+/**
+ * Thin client for the stamp.gridcoin.club JSON:API.
+ *
+ * The server enforces SHA-256 format on the `hash` attribute (exactly 64
+ * lowercase hex chars), so callers MUST have already validated/normalized
+ * the hash before calling `submitHash` — the API will reject anything else
+ * with a 422.
+ */
 export class StampApiClient {
   constructor(private baseUrl: string) {}
 
@@ -18,6 +26,11 @@ export class StampApiClient {
       }),
     });
 
+    // 406 is the stamp API's signal that the stamping wallet is out of
+    // GRC to burn — it's not a client-side problem (the request was well
+    // formed), so we surface it with a clear operational message rather
+    // than a generic HTTP error. Retrying will not help until the wallet
+    // is topped up.
     if (response.status === 406) {
       throw new Error('Stamp API: insufficient wallet funds for stamping');
     }

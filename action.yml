@@ -24,7 +24,11 @@ inputs:
     required: false
     default: '30'
   include-source-archives:
-    description: 'Stamp the auto-generated source code archives (.zip and .tar.gz)'
+    description: 'Re-upload the auto-generated source archives as immutable release assets (named <repo>-<version>-stamped.zip/.tar.gz) and stamp them. Required because GitHub auto-archives are not byte-stable.'
+    required: false
+    default: 'true'
+  include-release-assets:
+    description: 'Also stamp files already uploaded to the release by other tooling (e.g. semantic-release).'
     required: false
     default: 'true'
   github-token:

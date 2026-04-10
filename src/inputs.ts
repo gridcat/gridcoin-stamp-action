@@ -18,6 +18,7 @@ export function getInputs(): ActionInputs {
     pollTimeout,
     pollInterval,
     includeSourceArchives: core.getBooleanInput('include-source-archives'),
+    includeReleaseAssets: core.getBooleanInput('include-release-assets'),
     githubToken: core.getInput('github-token', { required: true }),
   };
 }
