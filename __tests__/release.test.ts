@@ -1,9 +1,12 @@
+import { vi } from 'vitest';
 import {
   buildProofManifest,
   parseProofManifestCommit,
+  resolveRelease,
   stampedAssetNames,
   stripLeadingV,
 } from '../src/release';
+import * as github from '@actions/github';
 
 describe('stripLeadingV', () => {
   it('strips a leading v', () => {
@@ -107,5 +110,95 @@ describe('parseProofManifestCommit', () => {
     const commit = 'deadbeefcafebabefeedfacef00dd00db00fb00f';
     const manifest = buildProofManifest('o', 'r', 'v1', commit, 'a'.repeat(40));
     expect(parseProofManifestCommit(manifest)).toBe(commit);
+  });
+});
+
+describe('resolveRelease', () => {
+  // `github.context` is a getter on a shared singleton; stubbing `context.repo`
+  // with `vi.spyOn` keeps the rest of the context object intact and auto-restores
+  // between tests via `vi.restoreAllMocks()`.
+  const fakeRepo = { owner: 'gridcat', repo: 'gridcoin-stamp-action' };
+
+  beforeEach(() => {
+    vi.spyOn(github.context, 'repo', 'get').mockReturnValue(fakeRepo);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Minimal octokit shim: resolveRelease only touches `rest.repos.getReleaseByTag`.
+  function makeOctokit(
+    getReleaseByTag: ReturnType<typeof vi.fn>,
+  ): ReturnType<typeof github.getOctokit> {
+    return {
+      rest: { repos: { getReleaseByTag } },
+    } as unknown as ReturnType<typeof github.getOctokit>;
+  }
+
+  it('fetches the release by tag via the GitHub API when a tag is provided', async () => {
+    const getReleaseByTag = vi.fn().mockResolvedValue({
+      data: { id: 42, tag_name: 'v1.2.3', body: 'release notes' },
+    });
+    const octokit = makeOctokit(getReleaseByTag);
+
+    const release = await resolveRelease(octokit, 'v1.2.3');
+
+    expect(release).toEqual({ id: 42, tagName: 'v1.2.3', body: 'release notes' });
+    expect(getReleaseByTag).toHaveBeenCalledWith({
+      owner: 'gridcat',
+      repo: 'gridcoin-stamp-action',
+      tag: 'v1.2.3',
+    });
+  });
+
+  it('coerces a missing body to null (API returns null, ReleaseInfo uses null)', async () => {
+    const getReleaseByTag = vi.fn().mockResolvedValue({
+      data: { id: 7, tag_name: 'v0.1.0', body: null },
+    });
+
+    const release = await resolveRelease(makeOctokit(getReleaseByTag), 'v0.1.0');
+
+    expect(release.body).toBeNull();
+  });
+
+  it('rewraps a 404 with an actionable message pointing at common causes', async () => {
+    const error = Object.assign(new Error('Not Found'), { status: 404 });
+    const getReleaseByTag = vi.fn().mockRejectedValue(error);
+
+    await expect(
+      resolveRelease(makeOctokit(getReleaseByTag), 'v9.9.9'),
+    ).rejects.toThrow(/No GitHub release found for tag 'v9\.9\.9'/);
+  });
+
+  it('passes through non-404 errors unchanged (bubble up auth/5xx as-is)', async () => {
+    const error = Object.assign(new Error('Bad credentials'), { status: 401 });
+    const getReleaseByTag = vi.fn().mockRejectedValue(error);
+
+    await expect(
+      resolveRelease(makeOctokit(getReleaseByTag), 'v1.0.0'),
+    ).rejects.toThrow('Bad credentials');
+  });
+
+  it('falls back to event payload when no tag is provided', async () => {
+    vi.spyOn(github.context, 'payload', 'get').mockReturnValue({
+      release: { id: 99, tag_name: 'v2.0.0', body: 'from payload' },
+    });
+    // octokit should never be touched on the payload path.
+    const getReleaseByTag = vi.fn();
+    const octokit = makeOctokit(getReleaseByTag);
+
+    const release = await resolveRelease(octokit, '');
+
+    expect(release).toEqual({ id: 99, tagName: 'v2.0.0', body: 'from payload' });
+    expect(getReleaseByTag).not.toHaveBeenCalled();
+  });
+
+  it('throws the updated payload-missing error when neither tag nor release event is present', async () => {
+    vi.spyOn(github.context, 'payload', 'get').mockReturnValue({});
+
+    await expect(
+      resolveRelease(makeOctokit(vi.fn()), ''),
+    ).rejects.toThrow(/pass the `tag:` input/);
   });
 });

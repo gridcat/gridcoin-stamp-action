@@ -31736,7 +31736,7 @@ async function run() {
         const octokit = github.getOctokit(inputs.githubToken);
         const client = new stamp_api_1.StampApiClient(inputs.apiUrl);
         const { owner, repo } = github.context.repo;
-        const release = (0, release_1.getReleaseFromContext)();
+        const release = await (0, release_1.resolveRelease)(octokit, inputs.tag);
         core.info(`Processing release: ${release.tagName}`);
         // Live asset snapshot — the release payload from the event is stale
         // as soon as a previous run uploads anything. Everything downstream
@@ -31886,6 +31886,7 @@ function getInputs() {
         includeSourceArchives: core.getBooleanInput('include-source-archives'),
         includeReleaseAssets: core.getBooleanInput('include-release-assets'),
         githubToken: core.getInput('github-token', { required: true }),
+        tag: core.getInput('tag'),
     };
 }
 
@@ -32056,6 +32057,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getReleaseFromContext = getReleaseFromContext;
+exports.resolveRelease = resolveRelease;
 exports.listReleaseAssets = listReleaseAssets;
 exports.getCommitInfo = getCommitInfo;
 exports.stripLeadingV = stripLeadingV;
@@ -32089,13 +32091,53 @@ const core = __importStar(__nccwpck_require__(7484));
 function getReleaseFromContext() {
     const payload = github.context.payload;
     if (!payload.release) {
-        throw new Error('No release found in event payload. This action must be triggered by a release event.');
+        throw new Error('No release found in event payload. Either trigger this action from an `on: release` ' +
+            'event, or pass the `tag:` input to look up the release by tag name ' +
+            '(use this with goreleaser, semantic-release, or any push:tags workflow).');
     }
     return {
         id: payload.release.id,
         tagName: payload.release.tag_name,
         body: payload.release.body ?? null,
     };
+}
+/**
+ * Resolves a release without requiring an `on: release` trigger.
+ *
+ * The action's original contract was "only runs on release events", which
+ * breaks every workflow that creates the release itself inside the same job
+ * (goreleaser on `push: tags`, semantic-release with `GITHUB_TOKEN` — the
+ * latter can't even rely on a separate `on: release` workflow because releases
+ * created via `GITHUB_TOKEN` do not fan out to downstream workflows).
+ *
+ * When `tag` is non-empty we fetch the release straight from the API,
+ * otherwise we fall back to the event-payload path. A 404 is rewrapped into
+ * an actionable error: the usual cause is a tag created without an associated
+ * GitHub release (e.g. semantic-release config missing the `@semantic-release/github`
+ * plugin), and the raw Octokit "Not Found" is useless at telling users that.
+ */
+async function resolveRelease(octokit, tag) {
+    if (!tag) {
+        return getReleaseFromContext();
+    }
+    const { owner, repo } = github.context.repo;
+    try {
+        const { data } = await octokit.rest.repos.getReleaseByTag({ owner, repo, tag });
+        return {
+            id: data.id,
+            tagName: data.tag_name,
+            body: data.body ?? null,
+        };
+    }
+    catch (error) {
+        const status = error.status;
+        if (status === 404) {
+            throw new Error(`No GitHub release found for tag '${tag}'. The tag may exist but no release points ` +
+                `at it — create the release first (e.g. via goreleaser, semantic-release's ` +
+                `@semantic-release/github plugin, or the GitHub UI) before running this action.`);
+        }
+        throw error;
+    }
 }
 /**
  * Fresh fetch of the release's assets straight from the API.

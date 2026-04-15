@@ -37,7 +37,7 @@ import { StampApiClient } from './stamp-api';
 import { pollForConfirmation } from './poller';
 import { generateStampsMarkdown, updateReleaseBody } from './markdown';
 import {
-  getReleaseFromContext,
+  resolveRelease,
   listReleaseAssets,
   getCommitInfo,
   buildProofManifest,
@@ -264,7 +264,7 @@ export async function run(): Promise<void> {
     const client = new StampApiClient(inputs.apiUrl);
     const { owner, repo } = github.context.repo;
 
-    const release = getReleaseFromContext();
+    const release = await resolveRelease(octokit, inputs.tag);
     core.info(`Processing release: ${release.tagName}`);
 
     // Live asset snapshot — the release payload from the event is stale

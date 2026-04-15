@@ -20,5 +20,6 @@ export function getInputs(): ActionInputs {
     includeSourceArchives: core.getBooleanInput('include-source-archives'),
     includeReleaseAssets: core.getBooleanInput('include-release-assets'),
     githubToken: core.getInput('github-token', { required: true }),
+    tag: core.getInput('tag'),
   };
 }

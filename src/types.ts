@@ -6,6 +6,7 @@ export interface ActionInputs {
   includeSourceArchives: boolean;
   includeReleaseAssets: boolean;
   githubToken: string;
+  tag: string;
 }
 
 export interface StampApiResponse {
