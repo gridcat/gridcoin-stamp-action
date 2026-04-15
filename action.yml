@@ -36,7 +36,7 @@ inputs:
     required: false
     default: ${{ github.token }}
   tag:
-    description: 'Tag name of the release to stamp (e.g. "v1.2.3"). When set, the release is fetched via the GitHub API instead of the event payload. Use this when the workflow is not triggered by an `on: release` event — for example with goreleaser on `push: tags` (`tag: ${{ github.ref_name }}`) or with semantic-release.'
+    description: 'Tag name of the release to stamp (e.g. "v1.2.3"). When set, the release is fetched via the GitHub API instead of the event payload. Use this when the workflow is not triggered by an `on: release` event — for example with goreleaser on `push: tags` (pass the github.ref_name expression) or with semantic-release.'
     required: false
     default: ''
 
