@@ -8,7 +8,7 @@ Most blockchain timestamping tools hash whatever bytes you hand them and miss th
 
 ### The bytes you stamp stay the bytes people download
 
-GitHub's "Source code" downloads are **not byte-stable** — they are regenerated on every request and can produce different hashes for the same commit when the underlying `git archive`/`gzip` behavior drifts. This is not theoretical: on 30 January 2023, a routine Git upgrade on GitHub's servers silently changed the compressed bytes of every source archive on the platform, breaking checksum-pinned builds across Homebrew, Bazel, Spack, Go modules and many other ecosystems. GitHub [acknowledged the problem publicly](https://github.blog/open-source/git/update-on-the-future-stability-of-source-code-archives-and-hashes/) and committed to one year of byte-stability — a commitment that expired in February 2024 and has not been reissued.
+GitHub's "Source code" downloads are **not byte-stable**. They are regenerated on every request and can produce different hashes for the same commit when the underlying `git archive`/`gzip` behavior drifts. This is not theoretical: on 30 January 2023, a routine Git upgrade on GitHub's servers silently changed the compressed bytes of every source archive on the platform, breaking checksum-pinned builds across Homebrew, Bazel, Spack, Go modules and many other ecosystems. GitHub [acknowledged the problem publicly](https://github.blog/open-source/git/update-on-the-future-stability-of-source-code-archives-and-hashes/) and committed to one year of byte-stability. That commitment expired in February 2024 and has not been reissued.
 
 Gridcoin Stamp Action fetches each archive once, **re-uploads it as an immutable release asset** under a `-stamped` name, and stamps the uploaded copy. Uploaded assets are fixed CDN blobs whose bytes never change, so your proof stays verifiable years from now regardless of what happens to `git archive` upstream.
 
@@ -16,7 +16,7 @@ Gridcoin Stamp Action fetches each archive once, **re-uploads it as an immutable
 
 ### Reproducible commit-level proof
 
-Every release gets a `<tag>.stamp.txt` **proof manifest** — a four-line file with repository, tag, commit SHA, and tree SHA. Its contents are fully derivable from git state, so anyone with a clone can regenerate the file and recompute its hash with `sha256sum`. No archive download, no trusted third party.
+Every release gets a `<tag>.stamp.txt` **proof manifest**: a four-line file with repository, tag, commit SHA, and tree SHA. Its contents are fully derivable from git state, so anyone with a clone can regenerate the file and recompute its hash with `sha256sum`, without downloading an archive or trusting a third party.
 
 ### Refuses to silently attest to a mutated tag
 
@@ -24,45 +24,45 @@ Git tags can be force-pushed. Other timestamping workflows would silently re-sta
 
 ### Drag-and-drop, privacy-first verification
 
-Verification at [stamp.gridcoin.club](https://stamp.gridcoin.club) is one gesture. Drag the stamped file onto the page — the hash is computed **locally in your browser** and only the 64-character SHA-256 is checked against the blockchain. Your file never leaves your machine.
+Verification at [stamp.gridcoin.club](https://stamp.gridcoin.club) is one gesture. Drag the stamped file onto the page. The hash is computed **locally in your browser**, and only the 64-character SHA-256 is checked against the blockchain. Your file never leaves your machine.
 
 ### Anchored on a blockchain that rewards real science
 
-Every stamp lives on the [Gridcoin](https://gridcoin.us/) blockchain, whose reward mechanism is tied to volunteer scientific computing via [BOINC](https://boinc.berkeley.edu/) — protein folding, pulsar searches, climate modelling, cancer research. Your timestamp gets to live on a chain built by people who value science, not wasted hashes.
+Every stamp lives on the [Gridcoin](https://gridcoin.us/) blockchain, whose reward mechanism is tied to volunteer scientific computing via [BOINC](https://boinc.berkeley.edu/): protein folding, pulsar searches, climate modelling, cancer research. Your timestamp gets to live on a chain built by people who value science, not wasted hashes.
 
 ## How it works
 
 When a release is published, the action uploads up to three kinds of artifacts directly to the release and stamps each of them:
 
-1. **`<tag>.stamp.txt`** — a tiny proof manifest containing the repository, tag, commit SHA, and tree SHA. It is fully reproducible from git state, so anyone can regenerate it and verify the hash without downloading an archive. **Always generated** — the manifest is a hard invariant of the action because it is the commit anchor that the rerun safety checks rely on (see [Tag-mutation protection](#tag-mutation-protection)).
-2. **`<repo>-<version>-stamped.zip`** and **`<repo>-<version>-stamped.tar.gz`** — source archives. GitHub's auto-generated "Source code" downloads are fetched once at action runtime, re-uploaded as standard release assets, and that uploaded copy is what gets hashed and stamped. Optional (see `include-source-archives`). (See [Why re-upload source archives?](#why-re-upload-source-archives) below.)
-3. **Release assets uploaded by other tools** (e.g. semantic-release, goreleaser) — downloaded and stamped as-is; not re-uploaded. Optional (see `include-release-assets`).
+1. **`<tag>.stamp.txt`** is a tiny proof manifest containing the repository, tag, commit SHA, and tree SHA. It is fully reproducible from git state, so anyone can regenerate it and verify the hash without downloading an archive. **Always generated**: the manifest is a hard invariant of the action because it is the commit anchor that the rerun safety checks rely on (see [Tag-mutation protection](#tag-mutation-protection)).
+2. **`<repo>-<version>-stamped.zip`** and **`<repo>-<version>-stamped.tar.gz`** are the source archives. GitHub's auto-generated "Source code" downloads are fetched once at action runtime, re-uploaded as standard release assets, and that uploaded copy is what gets hashed and stamped. Optional (see `include-source-archives`). (See [Why re-upload source archives?](#why-re-upload-source-archives) below.)
+3. **Release assets uploaded by other tools** (e.g. semantic-release, goreleaser) are downloaded and stamped as-is, not re-uploaded. Optional (see `include-release-assets`).
 
 For each artifact the action computes a local SHA-256, submits it to the [stamp.gridcoin.club](https://stamp.gridcoin.club) API, and appends a verification row to the release body.
 
-Proof links in the release body will **not resolve immediately** — `stamp.gridcoin.club/proof/<hash>` returns a 404 until the blockchain confirms the transaction (typically 2–5 minutes). Once confirmed, the page displays the full cryptographic proof. If you need the links to be valid by the time the action finishes, set `wait-for-confirmation: true`.
+Proof links in the release body will **not resolve immediately**. `stamp.gridcoin.club/proof/<hash>` returns a 404 until the blockchain confirms the transaction (typically 2–5 minutes). Once confirmed, the page displays the full cryptographic proof. If you need the links to be valid by the time the action finishes, set `wait-for-confirmation: true`.
 
 ### Why re-upload source archives?
 
-GitHub's "Source code (zip)" and "Source code (tar.gz)" links on a release page are **not byte-stable**. They are generated on demand by `git archive` + `gzip` running on GitHub's servers, and the exact byte output depends on the git version, gzip implementation, and file ordering — all of which have changed in the past and can change again. Two downloads seconds apart can produce different SHA-256 hashes for the same commit. This means that stamping the auto-generated archive directly produces a hash that nobody — not even the repository owner — can reliably reproduce later, making the proof unverifiable in practice.
+GitHub's "Source code (zip)" and "Source code (tar.gz)" links on a release page are **not byte-stable**. They are generated on demand by `git archive` + `gzip` running on GitHub's servers, and the exact byte output depends on the git version, gzip implementation, and file ordering, all of which have changed in the past and can change again. Two downloads seconds apart can produce different SHA-256 hashes for the same commit. This means that stamping the auto-generated archive directly produces a hash that nobody (not even the repository owner) can reliably reproduce later, so the proof is unverifiable in practice.
 
 Uploaded release assets, on the other hand, are stored as immutable blobs on GitHub's CDN. By fetching the auto-archive once, uploading it back under a distinctive `-stamped` name, and stamping that uploaded copy, the action guarantees that the exact bytes you stamped are the exact bytes any future visitor will download when they click the asset.
 
-The original "Source code" links remain on the release page and will still hash to unstable values — **always use the `-stamped` assets for verification**.
+The original "Source code" links remain on the release page and will still hash to unstable values. **Always use the `-stamped` assets for verification.**
 
 ### Rerun behavior and idempotency
 
 The action is safe to re-run on the same release. On a rerun:
 
-- If a `-stamped` asset already exists on the release, its **existing bytes are reused** — the action does not re-download GitHub's auto-archive (which would likely produce different bytes — see above) and does not attempt to overwrite the asset. The existing hash is re-checked against the stamp API, and the release body is rewritten only if needed.
+- If a `-stamped` asset already exists on the release, its **existing bytes are reused**. The action does not re-download GitHub's auto-archive (which would likely produce different bytes; see above) and does not attempt to overwrite the asset. The existing hash is re-checked against the stamp API, and the release body is rewritten only if needed.
 - If the proof manifest already exists, the action **verifies that the tag still points at the same commit the manifest pinned**. If the tag has been force-pushed to a different commit since the previous run, the action aborts with a clear error rather than silently re-stamping against a different tree. See [Tag-mutation protection](#tag-mutation-protection) for details and recovery steps.
 - Partial failures from a previous run (e.g. zip uploaded but tar.gz missing) are picked up and completed on the rerun without disturbing what was already stamped.
 
 ### Tag-mutation protection
 
-Git tags can be force-pushed, which means a tag that was pointing at commit `A` when stamped can later be made to point at a completely different commit `B`. If the action naively re-stamped on top of such a mutation, the release could end up with stamped artifacts that disagree about which commit they represent — a silently broken proof.
+Git tags can be force-pushed, which means a tag that was pointing at commit `A` when stamped can later be made to point at a completely different commit `B`. If the action naively re-stamped on top of such a mutation, the release could end up with stamped artifacts that disagree about which commit they represent: a silently broken proof.
 
-To prevent that, every run performs a **preflight check**. Because the proof manifest is always generated (it's a hard invariant, not an input), any rerun is guaranteed to have a manifest from the previous run to compare against — there is no "manifest-less rerun" loophole.
+To prevent that, every run performs a **preflight check**. Because the proof manifest is always generated (it's a hard invariant, not an input), any rerun is guaranteed to have a manifest from the previous run to compare against, so there is no "manifest-less rerun" loophole.
 
 1. If a `<tag>.stamp.txt` manifest from a previous run is present on the release, the action downloads it and parses out the `commit:` line.
 2. It fetches the commit SHA the tag currently resolves to via the GitHub API.
@@ -75,7 +75,7 @@ If you see this error, you have two options:
 - **Reset the tag** back to the commit the manifest pins (`git tag -f v1.0.1 a1a1…` + `git push --force origin v1.0.1`), if the force-push was a mistake.
 - **Delete the previously stamped assets** (`<repo>-<version>-stamped.zip`, `<repo>-<version>-stamped.tar.gz`, `<tag>.stamp.txt`) from the release UI. The next run will then stamp a fresh, consistent set against the current commit.
 
-The previously-stamped on-chain records remain valid for whichever bytes they originally attested to — the action simply refuses to mix them with contradictory new attestations.
+The previously-stamped on-chain records remain valid for whichever bytes they originally attested to. The action simply refuses to mix them with contradictory new attestations.
 
 ### Required permissions
 
@@ -113,14 +113,14 @@ jobs:
 |-------|-------------|---------|
 | `github-token` | GitHub token for downloading assets and updating the release body | `${{ github.token }}` |
 | `api-url` | Stamp API base URL | `https://stamp.gridcoin.club/api` |
-| `tag` | Tag name of the release to stamp (e.g. `v1.2.3`). When set, the release is fetched via the GitHub API instead of the event payload. Required when the workflow is not triggered by `on: release` — for example with goreleaser on `push: tags` or with semantic-release in the same workflow. | _(unset — read from `release` event)_ |
+| `tag` | Tag name of the release to stamp (e.g. `v1.2.3`). When set, the release is fetched via the GitHub API instead of the event payload. Required when the workflow is not triggered by `on: release`, for example with goreleaser on `push: tags` or with semantic-release in the same workflow. | _(unset; read from `release` event)_ |
 | `include-source-archives` | Re-upload the auto-generated source archives as immutable `<repo>-<version>-stamped.zip/.tar.gz` assets and stamp them | `true` |
 | `include-release-assets` | Also stamp files that other tooling (semantic-release, goreleaser, …) already uploaded to the release | `true` |
 | `wait-for-confirmation` | Poll until the blockchain confirms the stamps before finishing | `false` |
 | `poll-timeout` | Max seconds to wait for blockchain confirmation | `300` |
 | `poll-interval` | Seconds between confirmation polls | `30` |
 
-> **Self-hosting note.** `api-url` exists so you can point the action at a private or self-hosted stamp service. Only the 64-character SHA-256 hash is ever sent to that URL — never the file contents, never the source, never any secret. Those hashes are about to be published on a public blockchain anyway, so there is no confidentiality risk in directing them at a different endpoint; the only thing you trust the endpoint with is whether it will actually submit them.
+> **Self-hosting note.** `api-url` exists so you can point the action at a private or self-hosted stamp service. Only the 64-character SHA-256 hash is ever sent to that URL. Nothing else leaves the runner. Those hashes are about to be published on a public blockchain anyway, so there is no confidentiality risk in directing them at a different endpoint; the only thing you trust the endpoint with is whether it will actually submit them.
 
 ## Outputs
 
@@ -143,7 +143,7 @@ Status is one of: `submitted` (hash sent to API), `pending` (polling timed out),
 
 ## Examples
 
-### Basic — stamp source archives only
+### Basic: stamp source archives only
 
 ```yaml
 - uses: gridcat/gridcoin-stamp-action@v1
@@ -163,7 +163,7 @@ Status is one of: `submitted` (hash sent to API), `pending` (polling timed out),
 
 ### Stamp only files uploaded by other tooling
 
-Skip the re-uploaded source archives and only stamp assets that other tools (semantic-release, goreleaser, …) already uploaded. The proof manifest is still generated — it is a hard invariant of the action and cannot be disabled.
+Skip the re-uploaded source archives and only stamp assets that other tools (semantic-release, goreleaser, …) already uploaded. The proof manifest is still generated; it is a hard invariant of the action and cannot be disabled.
 
 ```yaml
 - uses: gridcat/gridcoin-stamp-action@v1
@@ -174,7 +174,7 @@ Skip the re-uploaded source archives and only stamp assets that other tools (sem
 
 ### Commit-level proof only
 
-If you don't care about byte-for-byte archive verification and only want a cheap commit-level proof, disable both the source archives and the pre-existing asset stamping — you'll get just the proof manifest:
+If you don't care about byte-for-byte archive verification and only want a cheap commit-level proof, disable both the source archives and the pre-existing asset stamping. You'll get just the proof manifest:
 
 ```yaml
 - uses: gridcat/gridcoin-stamp-action@v1
@@ -230,7 +230,7 @@ jobs:
           tag: ${{ github.ref_name }}
 ```
 
-One job, one checkout, no PAT required — the default `GITHUB_TOKEN` has enough scope once `contents: write` is granted at the workflow level.
+This stays in one job and doesn't need a PAT. The default `GITHUB_TOKEN` has enough scope once `contents: write` is granted at the workflow level.
 
 ### Using with CircleCI and semantic-release
 
@@ -272,10 +272,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-This works because the action only reacts to the GitHub Release event — it doesn't matter whether the release was created by semantic-release on CircleCI, manually, or by any other tool.
+This works because the action only reacts to the GitHub Release event. It doesn't matter whether the release was created by semantic-release on CircleCI, manually, or by any other tool.
 
 > [!IMPORTANT]
-> **If your release is created by a GitHub Actions workflow** (e.g. semantic-release running inside GitHub Actions rather than CircleCI), releases made via the default `GITHUB_TOKEN` [do not trigger other workflows](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow) — this is a GitHub limitation to prevent recursive workflow runs. A separate `on: release` workflow will never fire. You have two options:
+> **If your release is created by a GitHub Actions workflow** (e.g. semantic-release running inside GitHub Actions rather than CircleCI), releases made via the default `GITHUB_TOKEN` [do not trigger other workflows](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow). GitHub does this to prevent recursive workflow runs. A separate `on: release` workflow will never fire. You have two options:
 >
 > **Option A (recommended): run the stamp action in the same job as semantic-release, and pass `tag:` directly.** No PAT required. [`cycjimmy/semantic-release-action`](https://github.com/cycjimmy/semantic-release-action) exposes the newly published tag as a step output, which you hand to this action:
 >
@@ -298,7 +298,7 @@ This works because the action only reacts to the GitHub Release event — it doe
 >           fetch-depth: 0
 >       - uses: actions/setup-node@v4
 >         with:
->           node-version: 20
+>           node-version: 24
 >       - id: semantic
 >         uses: cycjimmy/semantic-release-action@v4
 >         env:
@@ -321,7 +321,7 @@ This works because the action only reacts to the GitHub Release event — it doe
 >
 > The release event will then trigger the `on: release` workflow shown above exactly as if the release had come from an external CI. The `tag` input is not needed in this flow.
 >
-> This caveat does **not** apply when the release is created from an external CI system (CircleCI, Jenkins, etc.) — those events trigger workflows normally with the stock `on: release` setup at the top of this section.
+> This caveat does **not** apply when the release is created from an external CI system (CircleCI, Jenkins, etc.). Those events trigger workflows normally with the stock `on: release` setup at the top of this section.
 
 ## Release body output
 
@@ -346,7 +346,7 @@ Re-running the action on the same release replaces the section rather than dupli
 
 The easiest way:
 
-1. Download the `…-stamped.zip` (or `.tar.gz`) asset from the release page — **not** the "Source code" auto-archive.
+1. Download the `…-stamped.zip` (or `.tar.gz`) asset from the release page, **not** the "Source code" auto-archive.
 2. Drag and drop it onto [stamp.gridcoin.club](https://stamp.gridcoin.club). The page hashes the file locally in your browser (the file never leaves your machine) and looks it up against the blockchain. If the file was stamped, you'll see the proof directly.
 
 Or, from a terminal:
@@ -396,7 +396,7 @@ npm run build
 npm run all
 ```
 
-The `dist/` directory must be committed — GitHub Actions runs the compiled bundle directly.
+The `dist/` directory must be committed; GitHub Actions runs the compiled bundle directly.
 
 ## License
 

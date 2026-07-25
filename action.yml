@@ -45,5 +45,5 @@ outputs:
     description: 'JSON array of stamp results: [{filename, hash, stampId, proofUrl, status}]'
 
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'
